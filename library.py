@@ -41,3 +41,21 @@ async def home():
 @app.get("/books")
 async def get_all_books():
     return LIBRARY
+
+# Search Books By Their Id:
+
+@app.get("/books/{book_id}")
+async def get_book_by_id(book_id: int):
+    for book in LIBRARY:
+        if book.book_id == book_id:
+            return book
+
+# Sort Books According to Publish Year
+
+@app.get("/books/")
+async def sort_books_by_year(book_year: int):
+    books_to_return = []
+    for book in LIBRARY:
+        if book.book_publish_year == book_year:
+            books_to_return.append(book)
+    return books_to_return    
