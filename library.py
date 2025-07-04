@@ -1,6 +1,6 @@
-from fastapi import FastAPI, HTTPException, status
+from fastapi import FastAPI, HTTPException, status, Path, Query
 from pydantic import BaseModel, Field
-
+from typing import Optional
 
 
 app = FastAPI()
@@ -22,7 +22,7 @@ class Library:
 
 
 class BookRequest(BaseModel):
-    book_id: int = Field(gt=0)
+    book_id: Optional[int] = Field(description="Id is not needed on creation",default=None)
     book_title: str = Field(min_length= 3)
     book_author: str = Field(min_length= 3)
     book_rating: int = Field(gt=0, lt=6)
@@ -70,15 +70,16 @@ async def get_all_books():
 # Search Books By Their Id:
 
 @app.get("/books/{book_id}" , status_code= status.HTTP_200_OK)
-async def get_book_by_id(book_id: int):
+async def get_book_by_id(book_id: int = Path(gt=0)):
     for book in LIBRARY:
         if book.book_id == book_id:
             return book
+    raise HTTPException(status_code= 404, detail="Item not found")
 
 # Sort Books According to Publish Year
 
 @app.get("/books/", status_code= status.HTTP_200_OK)
-async def sort_books_by_year(book_year: int):
+async def sort_books_by_year(book_year: int = Query(gt= 1900, lt= 2030)):
     books_to_return = []
     for book in LIBRARY:
         if book.book_publish_year == book_year:
@@ -91,5 +92,36 @@ async def sort_books_by_year(book_year: int):
 @app.post("/books/create_book", status_code = status.HTTP_201_CREATED )
 async def add_new_book(request_book: BookRequest):
     new_book = Library(**request_book.model_dump())
-    LIBRARY.append(new_book)
+    LIBRARY.append(find_the_id(new_book))
 
+
+
+def find_the_id(book : Library):
+    book.book_id = 1 if len(LIBRARY) == 0 else LIBRARY[-1].book_id + 1
+    return book
+
+
+# Updateing the Books:
+
+@app.put("/books/update_book", status_code = status.HTTP_204_NO_CONTENT)
+async def update_a_book(updated_book: BookRequest):
+    book_changed = False
+    for i in range(len(LIBRARY)):
+        if LIBRARY[i].book_id == updated_book.book_id:
+            LIBRARY[i] = updated_book
+            book_changed = True
+    if not book_changed:
+        raise HTTPException(status_code= 404, detail="Item Not Fouud")
+
+        
+@app.delete("/books/{book_id}", status_code= status.HTTP_204_NO_CONTENT)
+async def delete_a_book(book_id: int = Path(gt=0)):
+    book_changed = False
+    for book in LIBRARY:
+        if book.book_id == book_id:
+            LIBRARY.remove(book)
+            break
+    if not book_changed:
+        raise HTTPException(status_code= 404, detail="Item does not found")
+
+        
